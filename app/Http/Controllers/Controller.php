@@ -3,16 +3,15 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Project;
 
 abstract class Controller
 {
-    protected function findOrFail($model, $id, $relations = [])
+    protected function getAllowedProjectIds()
     {
-        $data = $model::with($relations)->find($id);
-        if (!$data) {
-            return response()->json('data not found', 404);
-        }
-        return $data;
+        return Project::where('user_id', auth()->user()->id)
+            ->pluck('id')
+            ->toArray();
     }
 
     protected function validateRequest(Request $request, array $rules)

@@ -23,8 +23,8 @@ return new class extends Migration
             $table->enum('priority', array_column(Priorities::cases(), 'value'));
             $table->unsignedBigInteger('project_id');
             $table->unsignedBigInteger('parent_id')->nullable();
-            $table->foreign('project_id')->references('id')->on('projects');
-            $table->foreign('parent_id')->references('id')->on('tasks');
+            $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
+            $table->foreign('parent_id')->references('id')->on('tasks')->onDelete('cascade');
             $table->timestamps();
         });
     }

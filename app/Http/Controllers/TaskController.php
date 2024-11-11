@@ -12,17 +12,24 @@ class TaskController extends Controller
 {
     public function read()
     {
-        return response()->json(Task::all(), 200);
+        $allowed = $this->getAllowedProjectIds();
+        return response()->json(Task::whereIn('project_id', $allowed)->get(), 200);
     }
 
     public function pick($id)
     {
-        $data = $this->findOrFail(Task::class, $id, ['subtasks' => function ($query) {
-            $query->with('subtasks');
-        }]);
+        $allowed = $this->getAllowedProjectIds();
+        $data = Task::where('id', $id)
+            ->whereIn('project_id', $allowed)
+            ->with([
+                'subtasks' => function ($query) {
+                    $query->with('subtasks');
+                },
+            ])
+            ->first();
 
-        if ($data instanceof \Illuminate\Http\JsonResponse) {
-            return $data;
+        if (!$data) {
+            return response()->json('data does not exist or is not under user\'s scope', 404);
         }
 
         $this->loadSubtasks($data->subtasks);
@@ -51,9 +58,12 @@ class TaskController extends Controller
 
     public function edit(Request $request, $id)
     {
-        $data = $this->findOrFail(Task::class, $id);
-        if ($data instanceof \Illuminate\Http\JsonResponse) {
-            return $data;
+        $allowed = $this->getAllowedProjectIds();
+
+        $data = Task::where('id', $id)->whereIn('project_id', $allowed)->first();
+
+        if (!$data) {
+            return response()->json('Task not found or not within user\'s allowed projects', 404);
         }
 
         $validationError = $this->validateRequest($request, [
@@ -83,9 +93,12 @@ class TaskController extends Controller
 
     public function toggle_done($id)
     {
-        $data = $this->findOrFail(Task::class, $id);
-        if ($data instanceof \Illuminate\Http\JsonResponse) {
-            return $data;
+        $allowed = $this->getAllowedProjectIds();
+
+        $data = Task::where('id', $id)->whereIn('project_id', $allowed)->first();
+
+        if (!$data) {
+            return response()->json('Task not found or not within user\'s allowed projects', 404);
         }
 
         $done = !$data->done;
@@ -95,9 +108,12 @@ class TaskController extends Controller
 
     public function remove($id)
     {
-        $data = $this->findOrFail(Task::class, $id);
-        if ($data instanceof \Illuminate\Http\JsonResponse) {
-            return $data;
+        $allowed = $this->getAllowedProjectIds();
+
+        $data = Task::where('id', $id)->whereIn('project_id', $allowed)->first();
+
+        if (!$data) {
+            return response()->json('Task not found or not within user\'s allowed projects', 404);
         }
 
         $mors = $data;

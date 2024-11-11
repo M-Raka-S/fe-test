@@ -11,17 +11,23 @@ class ProjectController extends Controller
 {
     public function read()
     {
-        return response()->json(Project::all(), 200);
+        return response()->json(Project::where('user_id', auth()->user()->id)->get(), 200);
     }
 
     public function pick($id)
     {
-        $data = $this->findOrFail(Project::class, $id, ['tasks' => function ($query) {
-            $query->with('subtasks')->where('parent_id', null);
-        }]);
+        $allowedProjectIds = $this->getAllowedProjectIds();
+        $data = Project::where('id', $id)
+            ->whereIn('id', $allowedProjectIds)
+            ->with([
+                'tasks' => function ($query) {
+                    $query->with('subtasks')->where('parent_id', null);
+                },
+            ])
+            ->first();
 
-        if ($data instanceof \Illuminate\Http\JsonResponse) {
-            return $data;
+        if (!$data) {
+            return response()->json('data does not exist or is not under user\'s scope', 404);
         }
 
         $this->loadSubtasks($data->tasks);
@@ -51,15 +57,19 @@ class ProjectController extends Controller
 
     public function edit(Request $request, $id)
     {
-        $data = $this->findOrFail(Project::class, $id);
-        if ($data instanceof \Illuminate\Http\JsonResponse) {
-            return $data;
+        $allowedProjectIds = $this->getAllowedProjectIds();
+
+        $data = Project::where('id', $id)->whereIn('id', $allowedProjectIds)->first();
+
+        if (!$data) {
+            return response()->json('Project not found or not within user\'s allowed projects', 404);
         }
 
         $validationError = $this->validateRequest($request, [
             'name' => 'required',
             'description' => 'required',
             'status' => ['required', new Enum(Statuses::class)],
+            'user_id' => 'required',
         ]);
 
         if ($validationError) {
@@ -70,6 +80,7 @@ class ProjectController extends Controller
             'name' => $request->name,
             'description' => $request->description,
             'status' => $request->status,
+            'user_id' => $request->user_id,
         ]);
 
         return response()->json($data, 200);
@@ -77,9 +88,12 @@ class ProjectController extends Controller
 
     public function remove($id)
     {
-        $data = $this->findOrFail(Project::class, $id);
-        if ($data instanceof \Illuminate\Http\JsonResponse) {
-            return $data;
+        $allowedProjectIds = $this->getAllowedProjectIds();
+
+        $data = Project::where('id', $id)->whereIn('id', $allowedProjectIds)->first();
+
+        if (!$data) {
+            return response()->json('Project not found or not within user\'s allowed projects', 404);
         }
 
         $mors = $data;
