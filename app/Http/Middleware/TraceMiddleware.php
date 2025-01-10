@@ -15,6 +15,7 @@ class TraceMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
+        #set environment variables
         putenv('OTEL_SERVICE_NAME=php-laravel-app');
         putenv('OTEL_EXPORTER_OTLP_INSECURE=true');
 
